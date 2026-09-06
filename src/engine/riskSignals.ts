@@ -47,6 +47,46 @@ export function calculateRiskSignals(
     });
   }
 
+  // Total Debt-to-Income (DTI) ratio using outstanding balance
+  const totalOutstanding = profile.existingLoans.reduce(
+    (sum, loan) => sum + loan.outstanding,
+    0
+  );
+
+  const annualIncome = income * 12;
+  const totalDebtRatio = annualIncome > 0 
+    ? totalOutstanding / annualIncome 
+    : 0;
+
+  // Only consider DTI if there is actually outstanding debt
+  if (totalOutstanding > 0) {
+    if (totalDebtRatio >= 4.0) {
+      signals.push({
+        id: "very_high_total_debt",
+        severity: "critical",
+        title: "Total outstanding debt is extremely high",
+        explanation:
+          `Outstanding debt of ₹${Math.round(totalOutstanding / 1000)}K is ${totalDebtRatio.toFixed(1)}x annual income. This indicates severe debt burden that may make additional borrowing unsafe.`,
+      });
+    } else if (totalDebtRatio >= 3.0) {
+      signals.push({
+        id: "high_total_debt",
+        severity: "high",
+        title: "Total outstanding debt is very high",
+        explanation:
+          `Outstanding debt of ₹${Math.round(totalOutstanding / 1000)}K is ${totalDebtRatio.toFixed(1)}x annual income. This high debt load increases financial vulnerability.`,
+      });
+    } else if (totalDebtRatio >= 2.0) {
+      signals.push({
+        id: "elevated_total_debt",
+        severity: "medium",
+        title: "Total outstanding debt is elevated",
+        explanation:
+          `Outstanding debt of ₹${Math.round(totalOutstanding / 1000)}K is ${totalDebtRatio.toFixed(1)}x annual income. Consider debt reduction before taking more.`,
+      });
+    }
+  }
+
   if (profile.monthlyIncome.stability === "highly_variable") {
     signals.push({
       id: "income_volatility",

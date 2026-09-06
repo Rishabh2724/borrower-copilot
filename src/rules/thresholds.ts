@@ -32,6 +32,12 @@ export const RISK_RULES = {
   criticalExistingDebt: 0.40,
 
   recentBouncePenalty: true,
+
+  // Total Debt-to-Income (DTI) thresholds
+  // Based on total outstanding debt / annual income
+  elevatedTotalDebtRatio: 2.0,  // 2x annual income
+  highTotalDebtRatio: 3.0,       // 3x annual income
+  veryHighTotalDebtRatio: 4.0,   // 4x annual income
 } as const;
 
 

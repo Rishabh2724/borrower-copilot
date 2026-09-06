@@ -62,14 +62,18 @@ The questionnaire now collects existing loans as a structured list rather than a
 | What | Value | Why | Source / My judgement |
 |---|---:|---|---|
 | Monthly EMI | Used in FOIR and safe-EMI calculation | EMI is the monthly cash-flow cost of existing debt | Common lending concept |
-| Outstanding amount | Collected and shown as context; not added to monthly obligations | Outstanding is the total debt remaining, not a monthly cost | Implementation decision |
+| Outstanding amount | Collected and shown as context; **now used in Total Debt-to-Income (DTI) ratio** | Outstanding is the total debt remaining; DTI provides additional debt-load assessment | Implementation decision |
 | Total existing EMI | `sum(existingLoans[].emi)` | Aggregated across all loans | Implementation decision |
-| Total outstanding | `sum(existingLoans[].outstanding)` | Shown in results for context only | Implementation decision |
+| Total outstanding | `sum(existingLoans[].outstanding)` | Shown in results; **used in DTI risk signals and borrowing decision** | Implementation decision |
 | Interest rate | Collected; stored in `ExistingLoan.interestRate`; unused by engine | Optional debt-context field | Known limitation |
 | Remaining tenure | Collected; stored in `ExistingLoan.remainingMonths`; unused by engine | Optional debt-context field | Known limitation |
 | Outstanding ≠ EMI | They are explicitly separate fields with different labels | Prevents the common borrower error of confusing debt balance with monthly payment | Implementation decision |
 | hasExistingLoans = No | `existingLoans = []`; existing EMI = ₹0 | Explicit zero, not unknown | Implementation decision |
 | Hard-stop timing | Triggered after both `hasExistingLoans` and (if yes) `existingLoansList` are answered | Wait for the full loan list before computing no-cash-flow stop | Implementation decision |
+| **Total Debt-to-Income (DTI)** | **Outstanding debt ÷ Annual income** | **Assesses overall debt burden beyond monthly cash flow** | **Borrower Copilot assumption** |
+| DTI elevated (2-3x) | Medium risk signal | Debt load is notable but not necessarily unsafe | Borrower Copilot assumption |
+| DTI high (3-4x) | High risk signal; triggers BORROW_LESS alone or DON'T_BORROW with other risks | Very high debt load; additional borrowing increases vulnerability | Borrower Copilot assumption |
+| DTI very high (4x+) | Critical risk signal; triggers DON'T_BORROW immediately | Extreme debt burden; additional borrowing unsafe | Borrower Copilot assumption |
 
 ## Household affordability and existing debt
 
@@ -92,7 +96,7 @@ safeNewEMICapacity = min(safeFOIRCapacity, expenseConstrainedEMI)
 | Other household income | Added only to household/safe affordability | Separates household resilience from income a lender may accept | Borrower Copilot assumption |
 | Lender-style capacity | Excludes other household income and expenses | Uses normalized borrower income and existing EMI only | Implementation decision |
 | Household expenses | Reduce disposable income and the 50% expense constraint | Preserves half of post-expense cash flow for non-loan needs/uncertainty | Borrower Copilot assumption |
-| Existing-loan detail used | EMI only | Outstanding balance is now collected and shown; interest rate and remaining months exist in the type but are unused | Partial implementation |
+| Existing-loan detail used | EMI for monthly affordability; **Outstanding for Total DTI ratio** | Outstanding balance is now used in DTI-based risk assessment; interest rate and remaining months exist in the type but are unused | Full implementation for DTI |
 | No cash-flow hard stop | household income − expenses − existing EMI ≤ 0 | No remaining monthly cash flow for another EMI | Borrower Copilot assumption |
 | Existing-debt warning | existing EMI / normalized income ≥30% | Risk/rate warning | Borrower Copilot assumption |
 | Critical existing debt | ratio ≥40% | Critical risk signal; can combine with weak credit for `DON'T BORROW` | Borrower Copilot assumption |
@@ -172,4 +176,4 @@ The unused `CONFIDENCE_RULES` constants (low .50, medium .75, high .90) do not s
 
 The card shows requested amount, recommended/target amount, safe-EMI ceiling, fair-rate band, APR ceiling (the maximum of the APR band), and the same decision/rate/safe-EMI/product-fit reasons. It creates wording based on decision: decline/seek alternatives for `DON'T BORROW`, or a target amount/EMI and APR disclosure request otherwise.
 
-Known limitations: no lender/product data, verification, bureau pull, co-applicant logic, age/tenure eligibility, employment-tenure, ITR, savings, upcoming-expense, or loan-purpose effect; outstanding balance, interest rate, and remaining tenure are collected but do not alter any current engine formula; no home/two-wheeler security/LTV; no use of product tenure metadata; no rate-rise stress; no real APR/fee model; and the computed lender-style amount is absent from the UI. Product fit is nearly unreachable through the UI because the product selector is purpose-filtered.
+Known limitations: no lender/product data, verification, bureau pull, co-applicant logic, age/tenure eligibility, employment-tenure, ITR, savings, upcoming-expense, or loan-purpose effect; interest rate and remaining tenure are collected but do not alter any current engine formula; no home/two-wheeler security/LTV; no use of product tenure metadata; no rate-rise stress; no real APR/fee model; and the computed lender-style amount is absent from the UI. Product fit is nearly unreachable through the UI because the product selector is purpose-filtered. DTI thresholds are application assumptions, not regulatory requirements.

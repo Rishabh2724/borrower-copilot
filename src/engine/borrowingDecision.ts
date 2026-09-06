@@ -119,6 +119,37 @@ if (securedLoanWithoutSecurity) {
         signal.id === "repayment_issue"
     );
 
+  // Total debt-to-income ratio signals
+  const veryHighTotalDebt =
+    riskSignals.some(
+      (signal) =>
+        signal.id === "very_high_total_debt"
+    );
+
+  const highTotalDebt =
+    riskSignals.some(
+      (signal) =>
+        signal.id === "high_total_debt"
+    );
+
+  /*
+   * VERY HIGH TOTAL DEBT (DTI >= 4x)
+   * 
+   * Outstanding debt is 4x or more of annual income.
+   * This indicates severe debt burden that makes
+   * additional borrowing very risky.
+   */
+  if (veryHighTotalDebt) {
+    return {
+      decision: "dont_borrow",
+      reasons: [
+        "Total outstanding debt is extremely high relative to income (4x+ annual income).",
+        "Taking additional debt with this existing debt burden would create severe financial vulnerability.",
+        "Focus on reducing existing debt before considering new borrowing.",
+      ],
+    };
+  }
+
   /*
    * VERY WEAK CREDIT + ANOTHER MATERIAL RISK
    */
@@ -136,6 +167,31 @@ if (securedLoanWithoutSecurity) {
       reasons: [
         "The credit profile is very weak and another material repayment-risk signal is present.",
         "Taking additional debt in this situation could increase the likelihood of unaffordable repayment or limited lender options.",
+      ],
+    };
+  }
+
+  /*
+   * HIGH TOTAL DEBT + ANOTHER RISK FACTOR
+   * 
+   * DTI is 3-4x annual income AND another risk is present.
+   * This combination makes additional borrowing too risky.
+   */
+  if (
+    highTotalDebt &&
+    (
+      stressTest?.affordabilityStatus === "unsafe" ||
+      criticalDebtRisk ||
+      repaymentIssue ||
+      criticalCreditRisk
+    )
+  ) {
+    return {
+      decision: "dont_borrow",
+      reasons: [
+        "Total outstanding debt is very high (3-4x annual income) and combined with other risk factors.",
+        "This combination creates excessive financial risk for additional borrowing.",
+        "Address existing debt load or other risk factors before considering new loans.",
       ],
     };
   }
@@ -169,6 +225,12 @@ if (securedLoanWithoutSecurity) {
     if (criticalCreditRisk) {
       reasons.push(
         "The very weak credit profile is likely to narrow lender options and increase borrowing cost."
+      );
+    }
+
+    if (highTotalDebt) {
+      reasons.push(
+        "Total outstanding debt is already very high (3-4x annual income), making the requested amount less prudent."
       );
     }
 
@@ -217,6 +279,24 @@ if (securedLoanWithoutSecurity) {
       reasons: [
         "The requested amount is affordable at baseline, but the very weak credit profile makes additional borrowing less suitable.",
         "Consider a smaller amount and compare secured or lower-cost alternatives where appropriate.",
+      ],
+    };
+  }
+
+  /*
+   * HIGH TOTAL DEBT (DTI 3-4x) WITHOUT OTHER RISKS
+   * 
+   * Monthly affordability is OK, but total debt load
+   * is already elevated. Recommend borrowing less to
+   * avoid excessive total debt burden.
+   */
+  if (highTotalDebt) {
+    return {
+      decision: "borrow_less",
+      reasons: [
+        "Monthly repayment capacity supports the requested amount, but total outstanding debt is already very high (3-4x annual income).",
+        "Borrowing less would keep total debt burden more manageable and maintain financial flexibility.",
+        "Consider whether the new loan is essential before adding to existing debt load.",
       ],
     };
   }
