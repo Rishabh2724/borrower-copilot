@@ -65,6 +65,15 @@ export function calculateConfidence(
       complete: profile.age > 0,
       weight: 1,
     },
+
+    {
+      label: "ITR documentation for self-employed",
+      complete:
+        profile.employmentType !== "self_employed" ||
+        (profile.business?.annualItrIncome !== undefined &&
+          profile.business.annualItrIncome > 0),
+      weight: 3,
+    },
   ];
 
   const totalWeight = checks.reduce(

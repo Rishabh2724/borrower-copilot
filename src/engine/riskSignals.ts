@@ -1,5 +1,5 @@
 import type { BorrowerProfile } from "../types/borrower";
-import { getNormalizedIncome } from "./income";
+import { getNormalizedIncome, getVerifiedIncome } from "./income";
 
 export type RiskSeverity =
   | "low"
@@ -139,6 +139,52 @@ export function calculateRiskSignals(
         title: "Fair credit profile",
         explanation:
           `The entered credit score of ${score} is in the assessment's fair-credit range but may not qualify for the lowest borrowing rates.`,
+      });
+    }
+  }
+
+  // ITR income verification for self-employed
+  if (profile.employmentType === "self_employed") {
+    if (profile.business?.annualItrIncome && profile.business.annualItrIncome > 0) {
+      const statedMonthly =
+        (profile.monthlyIncome.min + profile.monthlyIncome.max) / 2;
+      const itrMonthly = profile.business.annualItrIncome / 12;
+
+      if (itrMonthly < statedMonthly) {
+        const discrepancy = (statedMonthly - itrMonthly) / itrMonthly;
+
+        if (discrepancy > 0.50) {
+          signals.push({
+            id: "large_income_discrepancy",
+            severity: "high",
+            title: "Large gap between stated and documented income",
+            explanation: `Stated monthly income (₹${Math.round(
+              statedMonthly / 1000
+            )}K) is ${Math.round(
+              discrepancy * 100
+            )}% above ITR-documented income (₹${Math.round(
+              itrMonthly / 1000
+            )}K). Assessment uses documented income for conservative capacity estimate.`,
+          });
+        } else if (discrepancy > 0.25) {
+          signals.push({
+            id: "moderate_income_discrepancy",
+            severity: "medium",
+            title: "Moderate gap between stated and documented income",
+            explanation: `Stated monthly income exceeds ITR-documented income by ${Math.round(
+              discrepancy * 100
+            )}%. Assessment uses conservative blend of both for safety.`,
+          });
+        }
+      }
+    } else {
+      // Self-employed but no ITR provided
+      signals.push({
+        id: "no_itr_provided",
+        severity: "medium",
+        title: "No ITR documentation provided",
+        explanation:
+          "Self-employed income could not be verified against ITR. Assessment uses stated income with reduced confidence.",
       });
     }
   }
