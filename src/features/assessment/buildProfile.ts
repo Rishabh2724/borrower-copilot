@@ -250,25 +250,12 @@ export function buildBorrowerProfile(
           )
         : undefined,
 
-    employmentTenureMonths:
-      answers.employmentTenureMonths !==
-      undefined
-        ? Number(
-            answers.employmentTenureMonths
-          )
-        : undefined,
+
 
     business:
       employmentType ===
       "self_employed"
         ? {
-            yearsOperating:
-              answers.businessYears !==
-              undefined
-                ? Number(
-                    answers.businessYears
-                  )
-                : undefined,
 
             annualItrIncome:
               answers.annualItrIncome !==

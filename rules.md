@@ -8,227 +8,381 @@
 
 ---
 
-## Income Parameters
+## Income Normalization
 
-### Stability Haircuts
-- Stable: 100%
-- Variable: 85%
-- Highly Variable: 70%
+### Income Stability Haircuts
+Applied to primary borrower's income:
+- **Stable:** 100% (no adjustment)
+- **Variable:** 85% (15% buffer)
+- **Highly Variable:** 70% (30% buffer)
 
-### ITR Verification (Self-Employed)
-- Gap >50%: Use ITR only
-- Gap 25-50%: Blend 70% ITR + 30% stated
-- Gap <25%: Accept stated income
+### ITR Verification (Self-Employed Only)
+Compares stated monthly income vs ITR-documented income:
+
+| Gap Between Stated & ITR | Action | Rationale |
+|--------------------------|--------|-----------|
+| ITR ≥ Stated | Accept stated | No downward adjustment needed |
+| Gap >50% | Use ITR only | Large discrepancy requires conservative approach |
+| Gap 25-50% | Blend: 70% ITR + 30% stated | Moderate gap, weighted blend |
+| Gap <25% | Accept stated | Small difference, accept higher value |
+
+### Income Used in Calculations
+- **Lender capacity:** Borrower's normalized income only
+- **Safe capacity:** Borrower + other household income (both haircut-adjusted)
 
 ---
 
 ## FOIR (Fixed Obligations to Income Ratio)
 
-### Lender FOIR (Maximum)
-- Salaried: 50%
-- Self-employed: 45%
-- Informal: 40%
+### Lender FOIR (Maximum EMI Capacity)
+Applied to borrower's normalized income:
+- Salaried: **50%**
+- Self-employed: **45%**
+- Informal: **40%**
 
-### Safe FOIR (Conservative)
-- Salaried: 40%
-- Self-employed: 35%
-- Informal: 30%
+### Safe FOIR (Conservative EMI Capacity)
+Applied to total household income:
+- Salaried: **40%**
+- Self-employed: **35%**
+- Informal: **30%**
 
----
-
-## Debt Thresholds
-
-### Monthly EMI Ratios
-- ≥40%: Critical
-- ≥30%: High warning
-- >0%: Existing debt
-
-### DTI (Debt-to-Income) Ratios
-- ≥4x: Very high → DON'T BORROW
-- 3-4x: High risk → BORROW LESS or DON'T BORROW
-- 2-3x: Elevated risk
-- <2x: Manageable
+### Why Two FOIRs?
+- **Lender FOIR:** Approximates typical lender sanction capacity
+- **Safe FOIR:** More conservative recommendation to preserve financial buffer
 
 ---
 
-## Credit Score Bands
+## Affordability Calculation
 
-### Score Ranges
-- Excellent: ≥750 (−1.0% rate adjustment)
-- Good: 700-749 (−0.25% adjustment)
-- Fair: 650-699 (+1.0% adjustment)
-- Poor: <650 (+2.5% adjustment)
-- Unknown: (+1.5% adjustment)
+### Step 1: Disposable Income
+```
+Disposable = Household Income - Expenses - Existing EMIs
+```
+
+### Step 2: Safe EMI Capacity
+```
+Safe New EMI = min(
+  Safe FOIR Capacity,
+  50% × Disposable Income
+)
+```
+
+### Why 50% of Disposable Income?
+- Preserves 50% buffer for emergencies and savings
+- Prevents over-commitment even when FOIR allows more
+- Conservative by design
+
+---
+
+## Debt Burden Assessment
+
+### Monthly EMI Burden
+Ratio of existing EMIs to normalized income:
+- **≥40%:** Critical risk signal
+- **≥30%:** High risk signal  
+- **>0%:** Existing debt noted
+
+### Total DTI (Debt-to-Income) Ratio
+Total outstanding debt ÷ annual income:
+
+| DTI Ratio | Severity | Impact on Decision |
+|-----------|----------|-------------------|
+| **≥4x** | Critical | → DON'T BORROW (hard stop) |
+| **3-4x** | High | → BORROW LESS alone, DON'T BORROW if combined with other risks |
+| **2-3x** | Elevated | → Risk signal, monitor |
+| **<2x** | Manageable | → Normal assessment |
+
+---
+
+## Credit Score Impact
+
+### Score Bands & Rate Adjustments
+
+| Score Range | Category | Min Rate | Max Rate | Severity |
+|-------------|----------|----------|----------|----------|
+| **≥750** | Excellent | −1.0% | −1.5% | None |
+| **700-749** | Good | −0.5% | −0.75% | None |
+| **650-699** | Fair | 0% | 0% | Medium |
+| **550-649** | Poor | +1.0% | +1.5% | High |
+| **<550** | Very Weak | +2.0% | +3.0% | Critical |
+| **Unknown** | N/A | 0% | 0% | Medium |
+
+### Credit as Risk Signal
+- <550: Critical (can trigger DON'T BORROW with other risks)
+- 550-649: High risk signal
+- 650-699: Medium risk signal
+- ≥700: No risk signal
 
 ---
 
 ## Product Base Rates (% p.a.)
 
-| Product      | Min  | Max  | Secured |
-|--------------|------|------|---------|
-| Home         | 8    | 11   | Yes     |
-| LAP          | 9    | 13   | Yes     |
-| Gold         | 9    | 15   | Yes     |
-| Two-wheeler  | 10   | 15   | Yes     |
-| Personal     | 11   | 16   | No      |
-| Business     | 11   | 17   | No      |
+| Product      | Min  | Max  | Secured | Typical LTV |
+|--------------|------|------|---------|-------------|
+| Home         | 8    | 11   | Yes     | 80-90% |
+| LAP          | 9    | 13   | Yes     | 60% |
+| Gold         | 9    | 15   | Yes     | 70% |
+| Two-wheeler  | 10   | 15   | Yes     | 80-90% |
+| Personal     | 11   | 16   | No      | N/A |
+| Business     | 11   | 17   | No      | N/A |
+
+**Note:** Rates reflect typical Indian market (2024-2026), not regulatory standards.
 
 ---
 
-## Affordability Rules
+## Rate Calculation Logic
 
-### Disposable Income
-```
-Disposable = Normalized Income - Rent - Dependents - Existing EMIs
-```
+### Adjustments Applied (in order):
 
-### Safe EMI Capacity
-```
-Safe EMI = 50% × Disposable Income
-```
+1. **Start with product base rate**
 
-### Why 50%
-- Preserves buffer for emergencies
-- Allows for savings capacity
-- Conservative approach
+2. **Credit score adjustment:**
+   - Excellent (≥750): −1.0 to −1.5%
+   - Good (700-749): −0.5 to −0.75%
+   - Fair (650-699): No adjustment
+   - Poor (550-649): +1.0 to +1.5%
+   - Very weak (<550): +2.0 to +3.0%
 
----
+3. **Income stability adjustment:**
+   - Highly variable: +1.0 to +2.0%
+   - Variable: +0.5 to +1.0%
+   - Stable: No adjustment
 
-## Collateral Parameters
+4. **Existing debt adjustment:**
+   - EMI/Income ≥40%: +1.0 to +2.0%
+   - EMI/Income ≥30%: +0.5 to +1.0%
+   - Any existing debt: +0.25 to +0.5%
 
-### LTV (Loan-to-Value) Limits
-- LAP: 60% (conservative for property)
-- Gold: 70% (liquid asset, higher)
+5. **Payment bounce penalty:**
+   - Recent bounce: +1.0 to +2.0%
 
----
-
-## Stress Test
-
-### Scenarios
-- Income drop: 20%
-- Rate increase: 2%
-
-### Stressed FOIR Levels
-- Safe: ≤30%
-- Tight: 30-40%
-- Unsafe: >40%
+### Rate Bounds
+- **Floor:** 6% (minimum possible)
+- **Cap:** 24% (maximum possible)
+- **Min ≤ Max:** Always enforced
 
 ---
 
-## Risk Signal Severity
+## Stress Test Parameters
 
-### Critical
-- DTI ≥4x
-- Credit score <550 + unsafe stress/bounce/critical debt
-- No remaining cash flow
-- Request >2× safe capacity
+### Income Stress Test
+Simulates income reduction:
+- **Income drop:** 20%
+- **Scenario:** Household income falls by 20%, existing + proposed EMIs remain same
 
-### High
-- DTI 3-4x
-- Monthly EMI ≥40%
-- Credit score <550
+### Stressed FOIR Evaluation
+
+| Stressed FOIR | Status | Impact |
+|---------------|--------|--------|
+| **≤30%** | Safe | Passes stress test |
+| **30-40%** | Tight | Marginal, noted in decision |
+| **>40%** | Unsafe | May trigger BORROW LESS or DON'T BORROW |
+
+### Why Stress Test?
+Tests repayment sustainability under adverse conditions (income loss, medical emergency, business downturn).
+
+---
+
+## Risk Signals
+
+### Critical Severity
+- DTI ≥4x (very high total debt)
+- Credit score <550 (very weak credit)
+- Existing EMI ≥40% of income
+- Large ITR gap (>50%) for self-employed
+
+### High Severity
+- DTI 3-4x (high total debt)
+- Credit score 550-649 (weak credit)
+- Existing EMI ≥30% of income
 - Recent payment bounce
+- Highly variable income
+- Moderate ITR gap (25-50%) for self-employed
 
-### Medium
-- DTI 2-3x
-- Monthly EMI ≥30%
-- Credit score 550-649
-- Unsafe stress test
+### Medium Severity
+- DTI 2-3x (elevated total debt)
+- Credit score 650-699 (fair credit)
+- No ITR provided (self-employed)
+- Unsafe stress test result
 
-### Low
-- Credit score 650-699
-- Variable income
+### Low Severity
+- Variable income (not highly variable)
+- Any existing debt <30% of income
 
 ---
 
 ## Borrowing Decision Logic
 
-### DON'T BORROW
-- No collateral for LAP/gold loans
-- Safe EMI ≤ 0
-- DTI ≥4x
-- DTI 3-4x + other critical risks
-- Very weak credit + (unsafe stress OR critical debt OR bounce)
-- Request >2× safe capacity
+### DON'T BORROW Triggers
 
-### BORROW LESS
-- Request > safe capacity
-- DTI 3-4x (standalone)
-- Unsafe stress test
-- Very weak credit (standalone)
+1. **Secured loan without collateral**
+   - LAP or gold loan but collateral not available
 
-### BORROW
-- Request ≤ safe capacity
-- No critical risk factors
-- Passes stress test
+2. **No remaining cash flow**
+   - Expenses + existing EMIs ≥ household income
+
+3. **No safe EMI capacity**
+   - Safe new EMI capacity ≤ 0
+
+4. **Very high total debt (DTI ≥4x)**
+   - Outstanding debt ≥4× annual income
+
+5. **Very weak credit + other material risk**
+   - Credit <550 AND (unsafe stress OR EMI ≥40% OR bounce)
+
+6. **High total debt + other risk**
+   - DTI 3-4x AND (unsafe stress OR EMI ≥40% OR bounce OR credit <550)
+
+7. **Request far exceeds capacity**
+   - Requested amount >2× safe capacity
+
+---
+
+### BORROW LESS Triggers
+
+1. **Request exceeds safe capacity**
+   - Requested amount > safe amount (but <2× safe amount)
+
+2. **High total debt alone (DTI 3-4x)**
+   - Without other critical risks
+
+3. **Unsafe stress test**
+   - Baseline affordable but fails 20% income drop test
+
+4. **Very weak credit alone**
+   - Credit <550 without other critical risks
+
+---
+
+### BORROW Conditions
+
+1. **Request within safe capacity**
+   - Requested amount ≤ safe amount
+
+2. **No critical risk factors**
+   - Passes all DON'T BORROW checks
+
+3. **Passes or marginally passes stress test**
+   - Stressed FOIR ≤40% (safe or tight)
 
 ---
 
 ## Confidence Scoring
 
-### Data Point Weights (Total: 22)
-- High importance: 3 points each
-- Medium importance: 2 points each
-- Low importance: 1 point each
+### Data Points Weighted (Total: 22 points)
+
+| Data Point | Weight | Required For |
+|------------|--------|--------------|
+| Income min/max provided | 3 | All assessments |
+| Household expenses provided | 3 | Affordability |
+| Existing debt information | 3 | Capacity calculation |
+| ITR (self-employed) | 3 | Income verification |
+| Employment type | 2 | FOIR selection |
+| Income stability | 2 | Haircut calculation |
+| Credit score | 2 | Rate estimation |
+| Loan amount | 2 | Decision making |
+| Age | 1 | Profile completeness |
+| Loan purpose | 1 | Context |
 
 ### Confidence Levels
-- High: ≥80% (≥18/22 points)
-- Medium: 60-79% (13-17/22 points)
-- Low: <60% (<13/22 points)
-- Capped at: 90% (never 100%)
+- **High:** ≥80% (≥18/22 points)
+- **Medium:** 60-79% (13-17/22 points)
+- **Low:** <60% (<13/22 points)
+- **Maximum:** 90% (capped, never 100%)
 
 ---
 
-## Rate Calculation
+## Collateral Assumptions
 
-### Factors
-1. Product base rate
-2. Credit score adjustment (−1.0% to +2.5%)
-3. Income stability adjustment
-4. Existing debt adjustment
-5. Payment bounce penalty
+### LTV (Loan-to-Value) Caps
 
-### Rate Bounds
-- Floor: 6%
-- Cap: 24%
+| Asset Type | LTV | Rationale |
+|------------|-----|-----------|
+| **LAP (Property)** | 60% | Conservative for property, accounts for valuation uncertainty |
+| **Gold** | 70% | Liquid asset, easier to liquidate, higher LTV acceptable |
+
+**Note:** These are modeling assumptions, not lender-specific policies.
 
 ---
 
-## Tenure Options
+## Tenure Selection
 
 ### Illustrated Tenures
-- Short: 36 months
-- Medium: 48 months
-- Long: 60 months
+Three standard tenures shown for comparison:
+- **36 months** (short-term)
+- **48 months** (medium-term)
+- **60 months** (long-term)
 
-### Note
-Product-specific tenures stored but not used in calculations (future use).
+### Recommended Tenure Logic
+Selects longest tenure where EMI ≤ safe EMI capacity:
+- Maximizes monthly affordability
+- Reduces EMI burden
+- Uses conservative capacity ceiling
+
+### Product-Specific Tenures
+Product metadata (24, 36, 48, 84, 120, 180, 240 months) stored but **not used** in calculations. Future enhancement candidate.
 
 ---
 
 ## Data Collected but Not Used
 
-Fields collected for future enhancement:
-- Employment tenure
-- Business years
-- Upcoming expenses
-- Existing loan rate/tenure details
-- Loan purpose
+Fields collected for potential future use:
+- **Upcoming expenses:** Could reduce disposable income
+- **Existing loan rate/tenure:** Could enable refinance analysis
+- **Loan purpose:** Could enable purpose-specific guidance
 
 ---
 
-## APR Simplification
+## APR Calculation
 
 ### Included
-- Principal + interest
+- Principal amount
+- Interest charges over tenure
+- Processing fee (if applicable)
 
 ### Not Included
-- Processing fees
-- Insurance
-- Taxes
-- Other charges
+- GST on processing fee
+- Insurance premiums
+- Prepayment penalties
+- Late payment charges
+- Documentation charges
 
-### Why
-Simplified formula for decision-support, not true IRR calculation.
+### Formula
+```
+APR = Effective Rate + (Fee Impact × Annualization Factor)
+
+Fee Impact = (Processing Fee / Principal) × (12 / Tenure Months) × 100
+```
+
+### Why Simplified?
+- Decision-support tool, not regulatory disclosure
+- Simplified for clarity and comparison
+- Not a substitute for lender's APR disclosure
 
 ---
+
+## Model Limitations
+
+### Not Included in Model
+- Lender-specific eligibility criteria
+- Regulatory caps (e.g., RBI guidelines)
+- Processing time estimates
+- Tax benefits (e.g., home loan interest deduction)
+- Insurance requirements
+- Co-applicant income contribution to sanction (only to safe capacity)
+
+### Conservative Assumptions
+- Income haircuts (especially for variable income)
+- 50% disposable income rule
+- Lower safe FOIR vs lender FOIR
+- 20% income stress test
+
+### Not a Substitute For
+- Professional financial advice
+- Lender pre-qualification
+- Legal or tax consultation
+- Credit counseling
+
+---
+
+*Last updated: 2026-09-06*

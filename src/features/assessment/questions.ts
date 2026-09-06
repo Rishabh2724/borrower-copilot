@@ -541,25 +541,6 @@ export const QUESTIONS: Question[] = [
   // =====================================================
 
   {
-    id: "employmentTenureMonths",
-    category: "Employment",
-    text: "How long have you been with your current employer?",
-    type: "number",
-    required: false,
-    min: 0,
-    max: 600,
-    step: 1,
-    affects: [
-      "sanction",
-      "confidence",
-    ],
-
-    showWhen: (profile) =>
-      profile.employmentType ===
-      "salaried",
-  },
-
-  {
     id: "emergencySavingsMonths",
     category: "Financial buffer",
     text: "How many months of expenses could your savings cover?",
@@ -586,25 +567,6 @@ export const QUESTIONS: Question[] = [
   // =====================================================
   // SELF EMPLOYED
   // =====================================================
-
-  {
-    id: "businessYears",
-    category: "Business",
-    text: "How long has your business been operating?",
-    type: "number",
-    required: false,
-    min: 0,
-    max: 100,
-    step: 1,
-    affects: [
-      "sanction",
-      "confidence",
-    ],
-
-    showWhen: (profile) =>
-      profile.employmentType ===
-      "self_employed",
-  },
 
   {
     id: "annualItrIncome",
