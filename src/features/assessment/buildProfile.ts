@@ -1,8 +1,16 @@
-import type { BorrowerProfile } from "../../types/borrower";
+import type { BorrowerProfile, ExistingLoan, LoanType } from "../../types/borrower";
 
 export type IncomeRangeAnswer = {
   min?: number;
   max?: number;
+};
+
+export type ExistingLoanAnswer = {
+  type: string;
+  outstanding: number;
+  emi: number;
+  interestRate?: number;
+  remainingMonths?: number;
 };
 
 export type Answers = Record<
@@ -11,6 +19,7 @@ export type Answers = Record<
   | number
   | boolean
   | IncomeRangeAnswer
+  | ExistingLoanAnswer[]
   | undefined
 >;
 
@@ -104,15 +113,55 @@ export function buildBorrowerProfile(
   const loanType =
     answers.loanType as BorrowerProfile["loan"]["type"];
 
-  const existingEmi = Number(
-    answers.existingEmi ?? 0
-  );
+  /*
+   * Build existing loans from the structured loan-list answer.
+   *
+   * hasExistingLoans = false  → empty array (no debt)
+   * hasExistingLoans = true   → map existingLoansList entries
+   *
+   * If hasExistingLoans was answered "no" we return an empty
+   * array immediately without looking at the list.
+   */
+  const hasExistingLoans =
+    answers.hasExistingLoans === true;
+
+  const rawLoansList = answers.existingLoansList;
+
+  const existingLoans: ExistingLoan[] =
+    hasExistingLoans &&
+    Array.isArray(rawLoansList) &&
+    rawLoansList.length > 0
+      ? (rawLoansList as ExistingLoanAnswer[]).map(
+          (entry): ExistingLoan => ({
+            type: (entry.type as LoanType) ?? "personal",
+            outstanding: Math.max(0, Number(entry.outstanding ?? 0)),
+            emi: Math.max(0, Number(entry.emi ?? 0)),
+            interestRate:
+              entry.interestRate !== undefined &&
+              entry.interestRate !== null &&
+              Number.isFinite(Number(entry.interestRate))
+                ? Number(entry.interestRate)
+                : undefined,
+            remainingMonths:
+              entry.remainingMonths !== undefined &&
+              entry.remainingMonths !== null &&
+              Number(entry.remainingMonths) > 0
+                ? Number(entry.remainingMonths)
+                : undefined,
+          })
+        )
+      : [];
 
   const otherHouseholdIncomeAmount = Number(
     answers.otherHouseholdIncome ?? 0
   );
 
-  return {
+  /*
+   * We stash hasExistingLoans on the profile object so
+   * that the showWhen predicate in questions.ts can read it.
+   * It is cast away before the profile is used by the engine.
+   */
+  const profileWithExtras = {
     age: Number(
       answers.age ?? 0
     ),
@@ -130,7 +179,7 @@ export function buildBorrowerProfile(
       otherHouseholdIncomeAmount > 0
         ? {
             monthly: otherHouseholdIncomeAmount,
-            stability: "stable",
+            stability: "stable" as const,
           }
         : undefined,
 
@@ -138,16 +187,7 @@ export function buildBorrowerProfile(
       answers.householdExpenses ?? 0
     ),
 
-    existingLoans:
-      existingEmi > 0
-        ? [
-            {
-              type: "personal",
-              outstanding: 0,
-              emi: existingEmi,
-            },
-          ]
-        : [],
+    existingLoans,
 
     loan: {
       type: loanType,
@@ -239,5 +279,11 @@ export function buildBorrowerProfile(
                 : undefined,
           }
         : undefined,
+
+    // Extension — consumed by showWhen predicates only,
+    // not by the risk engine.
+    hasExistingLoans,
   };
+
+  return profileWithExtras as BorrowerProfile;
 }

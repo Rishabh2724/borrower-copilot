@@ -2,6 +2,7 @@ import type { Question } from "./questions";
 import type {
   AnswerValue,
   IncomeRangeAnswer,
+  ExistingLoanAnswer,
 } from "./buildProfile";
 
 interface QuestionCardProps {
@@ -326,6 +327,360 @@ export function QuestionCard({
           </button>
 
         </div>
+      </div>
+    );
+  }
+
+  /*
+   * ---------------------------------------------------------
+   * LOAN LIST
+   * ---------------------------------------------------------
+   *
+   * Lets the borrower add one or more existing loans, each
+   * capturing:
+   *   Required: loan type, outstanding amount, monthly EMI
+   *   Optional: interest rate, remaining tenure
+   */
+
+  if (question.type === "loan_list") {
+    const LOAN_TYPE_OPTIONS: { label: string; value: string }[] = [
+      { label: "Personal loan", value: "personal" },
+      { label: "Home loan", value: "home" },
+      { label: "Loan against property", value: "lap" },
+      { label: "Gold loan", value: "gold" },
+      { label: "Two-wheeler / vehicle loan", value: "two_wheeler" },
+      { label: "Business loan", value: "business" },
+      { label: "App / digital loan", value: "personal" },
+    ];
+
+    const loans: ExistingLoanAnswer[] =
+      Array.isArray(value) ? (value as ExistingLoanAnswer[]) : [];
+
+    const EMPTY_LOAN: ExistingLoanAnswer = {
+      type: "personal",
+      outstanding: 0,
+      emi: 0,
+      interestRate: undefined,
+      remainingMonths: undefined,
+    };
+
+    const handleLoanChange = (
+      index: number,
+      field: keyof ExistingLoanAnswer,
+      rawValue: string | number | undefined
+    ) => {
+      const updated = loans.map((loan, i) => {
+        if (i !== index) return loan;
+
+        if (field === "type") {
+          return { ...loan, type: String(rawValue ?? "personal") };
+        }
+
+        if (rawValue === "" || rawValue === undefined) {
+          const next = { ...loan };
+          delete next[field];
+          return next;
+        }
+
+        const numericValue = Number(rawValue);
+        if (Number.isNaN(numericValue)) return loan;
+        return { ...loan, [field]: numericValue };
+      });
+
+      onChange(updated);
+    };
+
+    const handleAddLoan = () => {
+      onChange([...loans, { ...EMPTY_LOAN }]);
+    };
+
+    const handleRemoveLoan = (index: number) => {
+      const updated = loans.filter((_, i) => i !== index);
+      onChange(updated.length > 0 ? updated : []);
+    };
+
+    // Initialise with one blank row when first rendered.
+    if (loans.length === 0) {
+      return (
+        <div className="question-card-content">
+          <div className="loan-list-empty">
+            <p className="loan-list-hint">
+              Add each active loan separately.
+              Monthly EMI and outstanding balance
+              are different — enter both.
+            </p>
+            <button
+              type="button"
+              className="add-loan-button"
+              onClick={() => onChange([{ ...EMPTY_LOAN }])}
+            >
+              + Add existing loan
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const totalEmi = loans.reduce(
+      (sum, l) => sum + Math.max(0, Number(l.emi ?? 0)),
+      0
+    );
+
+    const totalOutstanding = loans.reduce(
+      (sum, l) => sum + Math.max(0, Number(l.outstanding ?? 0)),
+      0
+    );
+
+    return (
+      <div className="question-card-content">
+        <div className="loan-list">
+          {loans.map((loan, index) => (
+            <div
+              key={index}
+              className="loan-entry"
+            >
+              {/* ---- Loan header ---- */}
+              <div className="loan-entry-header">
+                <span className="loan-entry-label">
+                  Loan {index + 1}
+                </span>
+
+                {loans.length > 1 && (
+                  <button
+                    type="button"
+                    className="remove-loan-button"
+                    aria-label={`Remove loan ${index + 1}`}
+                    onClick={() => handleRemoveLoan(index)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              {/* ---- Loan type ---- */}
+              <div className="loan-field">
+                <label
+                  htmlFor={`loan-type-${index}`}
+                  className="loan-field-label"
+                >
+                  Loan type
+                </label>
+
+                <select
+                  id={`loan-type-${index}`}
+                  className="loan-type-select"
+                  value={loan.type ?? "personal"}
+                  onChange={(e) =>
+                    handleLoanChange(index, "type", e.target.value)
+                  }
+                >
+                  {LOAN_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.label} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ---- Outstanding amount ---- */}
+              <div className="loan-field">
+                <label
+                  htmlFor={`loan-outstanding-${index}`}
+                  className="loan-field-label"
+                >
+                  Outstanding amount
+                  <span className="loan-field-required">*</span>
+                </label>
+
+                <p className="loan-field-hint">
+                  Total principal still remaining on this loan.
+                </p>
+
+                <div className="number-input-wrapper">
+                  <span className="currency-symbol">₹</span>
+
+                  <input
+                    id={`loan-outstanding-${index}`}
+                    className="large-number-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1000}
+                    value={
+                      loan.outstanding !== undefined &&
+                      loan.outstanding !== null &&
+                      String(loan.outstanding) !== ""
+                        ? loan.outstanding
+                        : ""
+                    }
+                    placeholder="0"
+                    aria-label={`Outstanding amount for loan ${index + 1}`}
+                    onChange={(e) =>
+                      handleLoanChange(index, "outstanding", e.target.value)
+                    }
+                  />
+                </div>
+
+                {loan.outstanding !== undefined &&
+                  loan.outstanding !== null &&
+                  String(loan.outstanding) !== "" && (
+                    <p className="formatted-number">
+                      ₹{formatIndianNumber(loan.outstanding)}
+                    </p>
+                  )}
+              </div>
+
+              {/* ---- Monthly EMI ---- */}
+              <div className="loan-field">
+                <label
+                  htmlFor={`loan-emi-${index}`}
+                  className="loan-field-label"
+                >
+                  Monthly EMI
+                  <span className="loan-field-required">*</span>
+                </label>
+
+                <p className="loan-field-hint">
+                  Fixed amount you pay each month for this loan.
+                  This is what reduces your monthly repayment capacity.
+                </p>
+
+                <div className="number-input-wrapper">
+                  <span className="currency-symbol">₹</span>
+
+                  <input
+                    id={`loan-emi-${index}`}
+                    className="large-number-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={500}
+                    value={
+                      loan.emi !== undefined &&
+                      loan.emi !== null &&
+                      String(loan.emi) !== ""
+                        ? loan.emi
+                        : ""
+                    }
+                    placeholder="0"
+                    aria-label={`Monthly EMI for loan ${index + 1}`}
+                    onChange={(e) =>
+                      handleLoanChange(index, "emi", e.target.value)
+                    }
+                  />
+                </div>
+
+                {loan.emi !== undefined &&
+                  loan.emi !== null &&
+                  String(loan.emi) !== "" && (
+                    <p className="formatted-number">
+                      ₹{formatIndianNumber(loan.emi)}
+                    </p>
+                  )}
+              </div>
+
+              {/* ---- Optional fields ---- */}
+              <details className="loan-optional-section">
+                <summary className="loan-optional-toggle">
+                  Optional details
+                </summary>
+
+                <div className="loan-optional-fields">
+                  {/* Interest rate */}
+                  <div className="loan-field">
+                    <label
+                      htmlFor={`loan-rate-${index}`}
+                      className="loan-field-label"
+                    >
+                      Interest rate (% per year)
+                    </label>
+
+                    <input
+                      id={`loan-rate-${index}`}
+                      className="large-number-input loan-rate-input"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      value={
+                        loan.interestRate !== undefined &&
+                        loan.interestRate !== null
+                          ? loan.interestRate
+                          : ""
+                      }
+                      placeholder="e.g. 14.5"
+                      aria-label={`Interest rate for loan ${index + 1}`}
+                      onChange={(e) =>
+                        handleLoanChange(index, "interestRate", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {/* Remaining tenure */}
+                  <div className="loan-field">
+                    <label
+                      htmlFor={`loan-tenure-${index}`}
+                      className="loan-field-label"
+                    >
+                      Remaining tenure (months)
+                    </label>
+
+                    <input
+                      id={`loan-tenure-${index}`}
+                      className="large-number-input loan-tenure-input"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      value={
+                        loan.remainingMonths !== undefined &&
+                        loan.remainingMonths !== null
+                          ? loan.remainingMonths
+                          : ""
+                      }
+                      placeholder="e.g. 24"
+                      aria-label={`Remaining tenure for loan ${index + 1}`}
+                      onChange={(e) =>
+                        handleLoanChange(index, "remainingMonths", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              </details>
+            </div>
+          ))}
+
+          {/* ---- Add another loan ---- */}
+          <button
+            type="button"
+            className="add-loan-button"
+            onClick={handleAddLoan}
+          >
+            + Add another loan
+          </button>
+
+          {/* ---- Totals summary ---- */}
+          {loans.length > 1 && (
+            <div className="loan-totals">
+              <div className="loan-totals-row">
+                <span>Total outstanding across all loans</span>
+                <strong>₹{formatIndianNumber(totalOutstanding)}</strong>
+              </div>
+
+              <div className="loan-totals-row">
+                <span>Total monthly EMI (used in affordability)</span>
+                <strong>₹{formatIndianNumber(totalEmi)}</strong>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <p className="input-hint">
+          Outstanding amount and monthly EMI are different.
+          Outstanding is the debt remaining; EMI is your fixed
+          monthly payment commitment.
+        </p>
       </div>
     );
   }

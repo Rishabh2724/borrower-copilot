@@ -101,7 +101,8 @@ export type QuestionType =
   | "income_range"
   | "number"
   | "select"
-  | "boolean";
+  | "boolean"
+  | "loan_list";
 
 export interface QuestionOption {
   label: string;
@@ -439,20 +440,17 @@ export const QUESTIONS: Question[] = [
   },
 
   // =====================================================
-  // 9. EXISTING EMI
+  // 9. EXISTING LOANS
   // =====================================================
 
   {
-    id: "existingEmi",
+    id: "hasExistingLoans",
     category: "Existing debt",
-    text: "How much do you currently pay toward loans each month?",
+    text: "Do you currently have any loans or EMIs?",
     description:
-      "Include the EMIs you are already responsible for.",
-    type: "currency",
+      "Include all active loans: personal loans, car loans, home loans, app loans, gold loans, or any other regular repayment obligations.",
+    type: "boolean",
     required: true,
-    min: 0,
-    max: 10000000,
-    step: 500,
     affects: [
       "decision",
       "sanction",
@@ -461,6 +459,32 @@ export const QUESTIONS: Question[] = [
       "emi",
       "confidence",
     ],
+  },
+
+  {
+    id: "existingLoansList",
+    category: "Existing debt",
+    text: "Tell us about your existing loans.",
+    description:
+      "Add each loan separately. Monthly EMI is the fixed amount you pay each month. Outstanding amount is how much you still owe in total.",
+    type: "loan_list",
+    required: true,
+    affects: [
+      "decision",
+      "sanction",
+      "safeAmount",
+      "rate",
+      "emi",
+      "confidence",
+    ],
+    showWhen: (profile) => {
+      // We use a cast here because hasExistingLoans is
+      // tracked in answers but not in BorrowerProfile.
+      const extended = profile as BorrowerProfile & {
+        hasExistingLoans?: boolean;
+      };
+      return extended.hasExistingLoans === true;
+    },
   },
 
   // =====================================================

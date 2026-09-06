@@ -177,19 +177,74 @@ export function validateAnswer(
       return { valid: true };
     }
 
-    case "existingEmi": {
-      const emi = Number(value);
-
-      if (
-        !Number.isFinite(emi) ||
-        emi < 0
-      ) {
+    case "existingLoansList": {
+      if (!Array.isArray(value)) {
         return {
           valid: false,
           severity: "error",
-          message:
-            "Existing EMI cannot be negative.",
+          message: "Please add at least one loan.",
         };
+      }
+
+      const loans = value as {
+        outstanding?: number;
+        emi?: number;
+        interestRate?: number;
+        remainingMonths?: number;
+      }[];
+
+      for (let i = 0; i < loans.length; i++) {
+        const loan = loans[i];
+        const num = i + 1;
+
+        const outstanding = Number(loan.outstanding ?? 0);
+        const emi = Number(loan.emi ?? 0);
+
+        if (!Number.isFinite(outstanding) || outstanding < 0) {
+          return {
+            valid: false,
+            severity: "error",
+            message: `Loan ${num}: Outstanding amount cannot be negative.`,
+          };
+        }
+
+        if (!Number.isFinite(emi) || emi < 0) {
+          return {
+            valid: false,
+            severity: "error",
+            message: `Loan ${num}: Monthly EMI cannot be negative.`,
+          };
+        }
+
+        if (
+          loan.interestRate !== undefined &&
+          loan.interestRate !== null &&
+          String(loan.interestRate) !== ""
+        ) {
+          const rate = Number(loan.interestRate);
+          if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+            return {
+              valid: false,
+              severity: "error",
+              message: `Loan ${num}: Interest rate must be between 0% and 100%.`,
+            };
+          }
+        }
+
+        if (
+          loan.remainingMonths !== undefined &&
+          loan.remainingMonths !== null &&
+          String(loan.remainingMonths) !== ""
+        ) {
+          const months = Number(loan.remainingMonths);
+          if (!Number.isFinite(months) || months <= 0) {
+            return {
+              valid: false,
+              severity: "error",
+              message: `Loan ${num}: Remaining tenure must be greater than 0 months.`,
+            };
+          }
+        }
       }
 
       return { valid: true };

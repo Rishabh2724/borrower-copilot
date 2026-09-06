@@ -11,6 +11,7 @@ import {
   buildBorrowerProfile,
   type Answers,
   type AnswerValue,
+  type ExistingLoanAnswer,
 } from "./buildProfile";
 import { getNormalizedIncome } from "../../engine/income";
 
@@ -205,10 +206,30 @@ export function AssessmentFlow() {
    * Do not use a truthy check.
    *
    * 0 is a valid financial answer.
+   * An empty loan list ([]) is not a valid answer for loan_list.
    */
-  const canContinue =
-    currentValue !== undefined &&
-    currentValue !== "";
+  const canContinue = (() => {
+    if (
+      currentValue === undefined ||
+      currentValue === ""
+    ) {
+      return false;
+    }
+
+    if (currentQuestion?.type === "loan_list") {
+      return (
+        Array.isArray(currentValue) &&
+        (currentValue as ExistingLoanAnswer[]).length > 0 &&
+        (currentValue as ExistingLoanAnswer[]).every(
+          (loan) =>
+            loan.outstanding >= 0 &&
+            loan.emi >= 0
+        )
+      );
+    }
+
+    return true;
+  })();
 
   /*
    * Build the borrower profile from the latest answers.
@@ -245,9 +266,21 @@ export function AssessmentFlow() {
       nextAnswers.householdExpenses ?? 0
     );
 
-    const existingEmi = Number(
-      nextAnswers.existingEmi ?? 0
-    );
+    /*
+     * Compute existing EMI from the new structured list.
+     * Falls back to zero if no loans have been declared.
+     */
+    const rawLoansList = nextAnswers.existingLoansList;
+    const hasLoans = nextAnswers.hasExistingLoans === true;
+
+    const existingEmi =
+      hasLoans &&
+      Array.isArray(rawLoansList)
+        ? (rawLoansList as { emi?: number }[]).reduce(
+            (sum, loan) => sum + Math.max(0, Number(loan.emi ?? 0)),
+            0
+          )
+        : 0;
 
     const hasIncome =
       nextAnswers.monthlyIncome !==
@@ -262,18 +295,26 @@ export function AssessmentFlow() {
       nextAnswers.householdExpenses !==
       undefined;
 
-    const hasExistingEmi =
-      nextAnswers.existingEmi !==
-      undefined;
-
     /*
-     * Do not stop before all three inputs exist.
+     * The hard stop is triggered after:
+     * - income, other-household-income and expenses are answered, AND
+     * - the existing-loans question has been answered (yes or no).
+     *
+     * hasExistingLoans = false means zero EMI (explicit).
+     * hasExistingLoans = true means we wait until the list is provided.
      */
+    const hasDebtAnswer =
+      nextAnswers.hasExistingLoans !== undefined &&
+      (
+        nextAnswers.hasExistingLoans === false ||
+        Array.isArray(rawLoansList)
+      );
+
     if (
       !hasIncome ||
       !hasOtherHouseholdIncome ||
       !hasExpenses ||
-      !hasExistingEmi
+      !hasDebtAnswer
     ) {
       return false;
     }
@@ -572,6 +613,7 @@ if (
     return (
       <AssessmentResults
         result={result}
+        answers={answers}
         onRestart={restart}
       />
     );
@@ -763,9 +805,11 @@ if (
 
 function AssessmentResults({
   result,
+  answers,
   onRestart,
 }: {
   result: AssessmentResult;
+  answers: Answers;
   onRestart: () => void;
 }) {
   const formatMoney = (value: number) =>
@@ -784,6 +828,30 @@ function AssessmentResults({
 
   const isBorrowLess =
     result.decision === "borrow_less";
+
+  /*
+   * Existing debt summary.
+   * Derived directly from the answers so the numbers
+   * match exactly what the borrower entered.
+   */
+  const existingLoansList =
+    Array.isArray(answers.existingLoansList)
+      ? (answers.existingLoansList as ExistingLoanAnswer[])
+      : [];
+
+  const hasExistingLoans =
+    answers.hasExistingLoans === true &&
+    existingLoansList.length > 0;
+
+  const totalExistingEmi = existingLoansList.reduce(
+    (sum, l) => sum + Math.max(0, Number(l.emi ?? 0)),
+    0
+  );
+
+  const totalOutstanding = existingLoansList.reduce(
+    (sum, l) => sum + Math.max(0, Number(l.outstanding ?? 0)),
+    0
+  );
 
   return (
     <main className="results-page">
@@ -935,9 +1003,89 @@ function AssessmentResults({
               </p>
             </div>
 
+            {hasExistingLoans && (
+              <div className="existing-debt-dont-borrow">
+                <strong>Your existing debt</strong>
+
+                <div className="existing-debt-metrics">
+                  <div>
+                    <span>Active loans</span>
+                    <strong>{existingLoansList.length}</strong>
+                  </div>
+
+                  <div>
+                    <span>Total outstanding balance</span>
+                    <strong>{formatMoney(totalOutstanding)}</strong>
+                  </div>
+
+                  <div>
+                    <span>Total monthly EMI</span>
+                    <strong>{formatMoney(totalExistingEmi)}</strong>
+                  </div>
+                </div>
+
+                <p className="existing-debt-note">
+                  Your existing EMIs reduce
+                  how much cash flow is available
+                  for a new loan. Reducing this
+                  commitment would improve your
+                  borrowing capacity.
+                </p>
+              </div>
+            )}
+
           </section>
         ) : (
           <>
+            {/* =============================================
+                EXISTING DEBT SUMMARY
+               ============================================= */}
+
+            {hasExistingLoans && (
+              <section className="existing-debt-card">
+                <div className="results-eyebrow">
+                  EXISTING DEBT
+                </div>
+
+                <h2>
+                  Your current loan obligations
+                </h2>
+
+                <p className="section-description">
+                  Your existing monthly EMIs reduce
+                  how much room you have for a new EMI.
+                  Outstanding balance shows how much debt
+                  remains — it is context, not a monthly
+                  cost.
+                </p>
+
+                <div className="existing-debt-metrics">
+                  <div>
+                    <span>Active loans</span>
+                    <strong>{existingLoansList.length}</strong>
+                  </div>
+
+                  <div>
+                    <span>Total outstanding balance</span>
+                    <strong>{formatMoney(totalOutstanding)}</strong>
+                  </div>
+
+                  <div>
+                    <span>Total monthly EMI commitment</span>
+                    <strong>{formatMoney(totalExistingEmi)}</strong>
+                  </div>
+                </div>
+
+                <p className="existing-debt-note">
+                  The monthly EMI total above is what is used
+                  in your affordability calculation.
+                  Outstanding balance shows total remaining debt
+                  but does not affect the monthly repayment
+                  capacity calculation directly.
+                </p>
+              </section>
+            )}
+
             {/* =============================================
                 BORROW / BORROW LESS METRICS
                ============================================= */}
