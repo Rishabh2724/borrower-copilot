@@ -232,5 +232,3 @@ Fields collected for future enhancement:
 Simplified formula for decision-support, not true IRR calculation.
 
 ---
-
-*Last updated: 2026-09-06*
